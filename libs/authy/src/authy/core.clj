@@ -1,6 +1,7 @@
 (ns authy.core
   (:use [medley.core :only [remove-vals]])
-  (:require [cheshire.core :as cheshire]
+  (:require [cemerick.url :as curl]
+            [cheshire.core :as cheshire]
             [clj-http.client :as http]
             [clojure.data.codec.base64 :as b64]
             [clojure.java.io :as io]
@@ -65,8 +66,9 @@
 (defn- get-token
   "Obtains an OAuth token for a JWT assertion."
   [url assertion]
-  (http/post url {:form-params {:assertion  assertion
-                                :grant_type oauth-grant-type}}))
+  (:body (http/post url {:form-params {:assertion  assertion
+                                       :grant_type oauth-grant-type}
+                         :as          :json})))
 
 (defn- get-token-info
   "Obtains information about an OAuth token."
@@ -91,9 +93,9 @@
   [{access-token :access_token
     token-type   :token_type
     expires-in   :expires_in}]
-  [[] [{:access-token    access-token
-        :token-type      token-type
-        :expiration-time (determine-expiration-time expires-in)}]])
+  [[] {:access-token    access-token
+       :token-type      token-type
+       :expiration-time (determine-expiration-time expires-in)}])
 
 (defn token-getAccessToken
   [this]
@@ -110,11 +112,25 @@
 (gen-class
  :name         org.iplantc.core.authy.OAuthTokenRetriever
  :init         init
- :constructors {[String String] []}
+ :constructors {[String String String] []}
  :state        state
- :methods      [[getToken []]])
+ :methods      [[getToken [] org.iplantc.core.authy.OAuthToken]
+                [getToken [String] org.iplantc.core.authy.OAuthToken]])
 
 (defn -init
-  [key-file-path base-url]
+  [key-file-path base-url issuer]
   [[] {:pk       (load-private-key key-file-path)
-       :base-url base-url}])
+       :base-url base-url
+       :issuer   issuer}])
+
+(defn retriever-get-token
+  [{:keys [pk base-url issuer]} sub]
+  (org.iplantc.core.authy.OAuthToken.
+   (get-token (str (curl/url base-url "o" "oauth2" "token"))
+              (encode (create-assertion {:iss issuer :sub sub}) pk))))
+
+(defn -getToken
+  ([this sub]
+     (retriever-get-token (.state this) sub))
+  ([this]
+     (retriever-get-token (.state this) nil)))

@@ -7,4 +7,6 @@
                  [org.clojure/data.codec "0.1.0"]
                  [cheshire "5.3.1"]
                  [clj-http "0.9.1"]
-                 [medley "0.1.5"]])
+                 [com.cemerick/url "0.1.1"]
+                 [medley "0.1.5"]]
+  :aot [authy.core])
