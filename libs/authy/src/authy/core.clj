@@ -76,7 +76,7 @@
   (http/get url {:query-params {:access_token token}}))
 
 (gen-class
- :name         org.iplantc.core.authy.OAuthToken
+ :name         org.iplantc.core.authy.OAuthTokenInfo
  :prefix       "token-"
  :init         init
  :constructors {[clojure.lang.PersistentArrayMap] []}
@@ -86,6 +86,7 @@
                 [getExpirationTime [] java.util.Date]])
 
 (defn- determine-expiration-time
+  "Determines the expiration time of a newly created access token given its lifetime in seconds."
   [lifetime]
   (java.util.Date. (+ (System/currentTimeMillis) (* lifetime 1000))))
 
@@ -114,8 +115,8 @@
  :init         init
  :constructors {[String String String] []}
  :state        state
- :methods      [[getToken [] org.iplantc.core.authy.OAuthToken]
-                [getToken [String] org.iplantc.core.authy.OAuthToken]])
+ :methods      [[getToken [] org.iplantc.core.authy.OAuthTokenInfo]
+                [getToken [String] org.iplantc.core.authy.OAuthTokenInfo]])
 
 (defn -init
   [key-file-path base-url issuer]
@@ -123,9 +124,10 @@
        :base-url base-url
        :issuer   issuer}])
 
-(defn retriever-get-token
+(defn- retriever-get-token
+  "Generates a JWT assertion and retrieves a token based on that assertion."
   [{:keys [pk base-url issuer]} sub]
-  (org.iplantc.core.authy.OAuthToken.
+  (org.iplantc.core.authy.OAuthTokenInfo.
    (get-token (str (curl/url base-url "o" "oauth2" "token"))
               (encode (create-assertion {:iss issuer :sub sub}) pk))))
 
